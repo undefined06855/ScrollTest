@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html dir="ltr">
+    <head>
+        <title>ScrollTest</title>
+        <link rel="shortcut icon" type="image/x-icon" href="./favicon.ico?" />
+        
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
+
+            * {
+                font-family: "Space Mono", "Courier New", Courier, monospace;
+                user-select: none;
+            }
+
+            body {
+                background-color: rgb(70, 70, 70);   
+            }
+
+            canvas {
+                position: fixed;
+                top: 0;
+                left: 0;
+                transition: filter .2s ease-out;
+            }
+
+            #note {
+                font-size: medium;
+                position: fixed;
+                bottom: 0;
+                right: 0;
+                width: 100%;
+                height: auto;
+                text-align: right;
+                color: rgba(150, 150, 150, 0.7);
+            }
+
+            #size-wrapper {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+            
+                display: flex;
+                justify-content: center;
+                align-items: center;
+
+                pointer-events: none;
+            }
+
+            #size {
+                width: auto;
+                height: auto;
+
+                background-color: rgba(110, 110, 110, 0.7);
+                pointer-events: none;
+
+                padding: .7em;
+                border-radius: .5em;
+            }
+
+            #notice {
+                position: fixed;
+                left: 50vw;
+                top: 50vh;
+
+                width: auto;
+                height: auto;
+
+                padding: .7em;
+                border-radius: .5em;
+
+                background-color: rgb(168, 168, 168);
+            
+                transform: translate(-50%, -50%);
+
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+
+                transition: opacity .5s ease-out;
+            }
+
+            span > button:not(#confirmbtn) {
+                pointer-events: none;
+            }
+
+            #confirmbtn {
+                width: 100%;
+            }
+
+
+        </style>
+    </head>
+    <body>
+        <canvas>Your browser does not support html5 canvas.<br/>Please switch to a more modern browser, or try on a different device.</canvas>
+
+        <div id="note">
+            <noscript>Please enable javascript, or switch to a newer browser. | </noscript>
+            Height: 0
+        </div>
+
+        <div id="notice" style="opacity: 0;">
+            <span>
+                Please note: some notices are too wide to fit your screen. These aren't required, they are just helpful to... keep you motivated.
+                <br/><br/>
+                You may be able to fix this by pressing <button>ctrl</button> + <button>-</button> or <button>fn</button> + <button>-</button>
+            </span>
+            &nbsp;
+            <button id="confirmbtn" style="pointer-events: all;">Ok</button>
+        </div>
+
+        <div id="size-wrapper" style="transition: opacity 0s linear 0s; opacity: 0;">
+            <div id="size">
+                Resized
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            const canvas = document.querySelector("canvas")
+                , ctx = canvas.getContext("2d")
+
+                , sizeWrap = document.getElementById("size-wrapper")
+                , sizeDisp = document.getElementById("size")
+                , note = document.getElementById("note")
+                , notice = document.getElementById("notice")
+                , confirmbtn = document.getElementById("confirmbtn")
+
+                , loop = 100
+                , size = 8 // Should be an even number for thin lines
+                ;
+
+            var offset = 0
+              , dispoffset = 0
+              , x = 0
+              , y = 0
+              , mouse = false
+              , noticeOn = false
+
+              , bgcol = "rgb(70, 70, 70)"
+              , boxcol = "rgb(130, 130, 130)"
+              , textcol = "rgb(100, 100, 100)"
+              , linecol = "rgba(180, 180, 200, .3)"
+              
+            const texts = [
+                1_000, "Scroll up, and watch the numbers increase!",
+                5_000, "You made it to 5,000! This is just one of many milestones.",
+                5_500, "I should probably reward you for getting this far.",
+                6_000, "Oh well. I don't have... anything...",
+                10_000, "Impressive, 10,000 is a lot. Well, you still have a long way to go.",
+                20_000, "Woah, 20,000! Surely this must be boring by now.",
+                50_000, "50,000!? Surely you must be using some kind of bot.",
+                50_500, "Well, the scrolling must continue.",
+                69_420, "hehe you reached funny number",
+                100_000, "6 digits! You either have a lot of time on your hands...",
+                105_000, "...or you're still using a bot.",
+                150_000, "150,000. Great! Carry on, Carry on.",
+                200_000, "200,000!! Come on, keep on scrolling.",
+                300_000, "Gosh, how have you made it this far?",
+                305_000, "next notice will be at 500,000, come on!",
+                500_000, "Halfway to a million!! Let's go, I'll meet you there.",
+                1_000_000, "A MILLION!! WHAT!?",
+                1_001_000, "ok, surely you must be using a bot...",
+                1_001_500, "...there is no way you can scroll this far without needing...",
+                1_002_000, "...thumb or wrist surgery. You MUST be using a bot.",
+                1_002_500, "Look,",
+                1_003_000, "I'm just going to stop congratulating you from now on...",
+                1_003_500, "...since you must be using a bot.",
+                1_004_000, "Here's one last color change.",
+                1_004_500, "Goodbye!",
+                10_000_000, "Ok, look, you must be superhuman.",
+                10_001_000, "I know I said I would stop at 1 million.",
+                10_002_000, "But there is actually no way you have made it this far without a bot.",
+                10_003_000, "I'm not even going to give you a color change.",
+                10_004_000, "You either looked in the code to see this, or changed a variable or someting.",
+                10_005_000, "That's it! No more chatting with you, cheater.",
+                69_696_969, "how the f*ck did you reach 69696969.",
+                null // NOTE: must end list with null, else last text will not be displayed!
+            ];
+
+            document.addEventListener("mousedown", e => mouse = true);
+            document.addEventListener("mouseup", e => mouse = false);
+            document.addEventListener("mouseleave", e => mouse = false);
+            document.addEventListener("mousemove", updatePos);
+
+
+            confirmbtn.addEventListener("click", e => {
+                noticeOn = false;
+                notice.style.opacity = 0;
+                canvas.style.filter = "";
+                confirmbtn.style.pointerEvents = "none";
+                console.log("Menu Closed");
+            })
+
+            function updatePos(event)
+            {
+                if (mouse && !noticeOn)
+                {
+                    offset += event.movementY;
+                    dispoffset += event.movementY;
+                    if (offset < 0)
+                        offset = loop
+                    if (offset > loop)
+                        offset = 0
+                    
+                    if (dispoffset < 0)
+                    {
+                        dispoffset = 0;
+                        offset = 0;
+                    }
+                }
+                note.innerHTML = "Height: " + dispoffset;
+                draw();
+            }
+
+            function onResize()
+            {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+
+                sizeDisp.innerText = window.innerWidth + "x" + window.innerHeight;
+
+                sizeWrap.style.transition = "opacity 0s linear 0s"
+                sizeWrap.style.opacity = "1";
+
+                setTimeout(() => {
+                    sizeWrap.style.opacity = "0";
+                    sizeWrap.style.transition = "opacity 1s linear 0s";
+                }, 200);
+
+                for (var index = 0; index < texts.length; index++)
+                {
+                    if (texts[index - 2] != undefined && index % 2 != 0)
+                    {
+                        if (ctx.measureText(texts[index]).width > window.innerWidth)
+                        {
+                            canvas.style.filter = "blur(5px)";
+                            noticeOn = true;
+                            confirmbtn.style.pointerEvents = "all";
+                            notice.style.opacity = 1;
+                        }
+                    }
+                }
+                draw();
+            }
+
+
+            function draw()
+            {
+                ctx.font = "40px Space Mono";
+                ctx.lineWidth = 2;
+                ctx.fillStyle = bgcol;
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+                
+                y = offset - 2 * loop;
+
+                finished = false;
+
+                while (!finished)
+                {
+                    x = x + loop;
+
+                    if (x > canvas.width)
+                    {
+                        ctx.strokeStyle = linecol;
+
+                        ctx.beginPath();
+                        ctx.moveTo(0, y + size / 2);
+                        ctx.lineTo(canvas.width, y + size / 2);
+                        ctx.stroke();
+                        
+
+                        x = 0;
+                        y = y + loop;
+
+                    }
+                    if (y > canvas.height)
+                        finished = true;
+                    
+                    ctx.fillStyle = boxcol;
+                    ctx.fillRect(x, y, size, size);
+                }
+
+                x = 0;
+                for (var i = 0; i < Math.floor(window.innerWidth / (loop + size) + 2); i++)
+                {
+                    x = x + loop;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x + size / 2, 0);
+                    ctx.lineTo(x + size / 2, canvas.height);
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = textcol;
+
+                for (var index = 0; index < texts.length; index++)
+                {
+                    if (texts[index - 2] != undefined && index % 2 != 0)
+                    {
+                        ctx.fillText(texts[index], 0, dispoffset - texts[index - 1] + window.innerHeight, window.innerWidth);
+                    }
+                }
+            }
+
+            for (var index = 0; index < texts.length; index++)
+            {
+                if (texts[index - 2] != undefined && index % 2 != 0)
+                {
+                    console.log("%s: %s", texts[index - 1], texts[index]);
+                }
+            }
+            console.log("")
+            
+            onResize();
+
+            window.addEventListener("resize", onResize)
+        </script>
+    </body>
+</html>
